@@ -13,7 +13,11 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 aula_schema = AulaSchema()
 aulas_schema = AulaSchema(many=True)
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+api_key = os.environ.get("OPENAI_API_KEY")
+if api_key and api_key != "sua_chave_aqui":
+    client = OpenAI(api_key=api_key)
+else:
+    client = None
 
 @bp.route('/planos', methods=['GET'])
 def listar_planos():
@@ -69,13 +73,16 @@ def health_check():
 
 @bp.route('/ia/recomendar', methods=['POST'])
 def smart_assist():
+    if client is None:
+        return jsonify({"error": "Configuração de IA pendente (Chave não encontrada)"}), 500
+    
     start_time = time.time()
     data = request.json
     
     titulo = data.get('titulo', '')
     disciplina = data.get('disciplina', '')
     ementa = data.get('ementa', '')
-
+    
     prompt = f"""
     Atue como um Assistente Pedagógico. Com base no título "{titulo}", na disciplina "{disciplina}" 
     e na ementa "{ementa}", sugira conteúdos complementares, tópicos relacionados e 3 tags.
@@ -92,9 +99,7 @@ def smart_assist():
         
         resultado_ia = response.choices[0].message.content
         latency = round(time.time() - start_time, 2)
-        
         logger.info(f"[INFO] AI Request: Title='{titulo}', Discipline='{disciplina}', Latency={latency}s")
-        
         return resultado_ia, 200
     
     except Exception as e:
