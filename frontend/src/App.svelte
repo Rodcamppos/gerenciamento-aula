@@ -50,10 +50,15 @@
       });
       
       const sugestao = await res.json();
-      novoPlano.conteudos = sugestao.conteudos;
-      novoPlano.tags = sugestao.tags.join(', ');
+      
+      if (res.ok) {
+        novoPlano.conteudos = sugestao.conteudos || '';
+        novoPlano.tags = Array.isArray(sugestao.tags) ? sugestao.tags.join(', ') : (sugestao.tags || '');
+      } else {
+        alert("Erro retornado pela IA: " + (sugestao.error || "Erro desconhecido"));
+      }
     } catch (e) {
-      alert("Erro na IA.");
+      alert("Erro na conexão com a IA.");
     } finally {
       loadingIA = false;
     }
@@ -66,12 +71,19 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(novoPlano)
       });
+      
+      const data = await res.json();
+      
       if (res.ok) {
-        novoPlano = { titulo: '', disciplina: '', ementa: '', objetivo: '', data_prevista: '' };
+        alert("Plano salvo com sucesso!");
+        novoPlano = { titulo: '', disciplina: '', ementa: '', objetivo: '', data_prevista: '', conteudos: '', recursos_apoio: '', tags: '' };
         carregarPlanos();
+      } else {
+        console.error("Detalhes do erro 400:", data);
+        alert("Erro de validação nos campos: " + JSON.stringify(data));
       }
     } catch (e) {
-      alert("Erro ao salvar.");
+      alert("Erro ao conectar com o servidor para salvar.");
     }
   }
 
@@ -108,6 +120,8 @@
   <section class="list">
     {#if loading}
       <p>Carregando...</p>
+    {:else if erro}
+      <p class="error">{erro}</p>
     {:else}
       <table>
         <thead>
@@ -122,7 +136,7 @@
             <tr>
               <td>{plano.titulo}</td>
               <td>{plano.disciplina}</td>
-              <td>{plano.data_prevista}</td>
+              <td>{plano.data_prevista || 'Não informada'}</td>
             </tr>
           {/each}
         </tbody>
@@ -145,4 +159,5 @@
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
   th { background: #fafafa; }
+  .error { color: red; }
 </style>
